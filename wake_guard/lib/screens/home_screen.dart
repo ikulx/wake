@@ -117,13 +117,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _registerNfcTag() async {
-    final NfcAvailability availability = await FlutterNfcKit.nfcAvailability;
-    if (availability != NfcAvailability.available) {
+    final NFCAvailability availability = await FlutterNfcKit.nfcAvailability;
+    if (availability != NFCAvailability.available) {
       if (mounted) {
         final String message = switch (availability) {
-          NfcAvailability.disabled =>
+          NFCAvailability.disabled =>
             'NFC ist deaktiviert. Bitte aktiviere es in den Einstellungen.',
-          NfcAvailability.notSupported =>
+          NFCAvailability.notSupported =>
             'Dieses Gerät unterstützt kein NFC.',
           _ => 'NFC ist aktuell nicht verfügbar.',
         };
