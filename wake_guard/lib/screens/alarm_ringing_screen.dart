@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
-import 'package:qr_code_scanner/qr_code_scanner.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../services/alarm_service.dart';
 import '../services/storage_service.dart';
@@ -21,19 +21,13 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen> {
   bool _isDisarmed = false;
   bool _isProcessing = false;
   String? _error;
-  QRViewController? _qrController;
-  final GlobalKey _qrKey = GlobalKey(debugLabel: 'ALARM_QR');
-
-  @override
-  void dispose() {
-    _qrController?.dispose();
-    super.dispose();
-  }
 
   Future<void> _scanQr() async {
     setState(() {
       _error = null;
     });
+
+    final MobileScannerController controller = MobileScannerController();
 
     await showDialog<void>(
       context: context,
@@ -42,38 +36,54 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen> {
         title: const Text('QR-Code scannen'),
         content: SizedBox(
           width: 280,
-          height: 280,
-          child: QRView(
-            key: _qrKey,
-            onQRViewCreated: (QRViewController controller) {
-              _qrController = controller;
-              controller.scannedDataStream.listen((Barcode data) async {
-                controller.pauseCamera();
-                final String? expectedCode = StorageService.instance.getQrCode();
-                if (data.code == expectedCode) {
-                  await _finishAlarm();
-                } else {
+          height: 320,
+          child: MobileScanner(
+            controller: controller,
+            onDetect: (BarcodeCapture capture) async {
+              final List<Barcode> barcodes = capture.barcodes;
+              if (barcodes.isEmpty) {
+                return;
+              }
+
+              final Barcode barcode = barcodes.firstWhere(
+                (Barcode candidate) =>
+                    candidate.rawValue != null && candidate.rawValue!.isNotEmpty,
+                orElse: () => barcodes.first,
+              );
+
+              final String? value = barcode.rawValue;
+              if (value == null) {
+                return;
+              }
+
+              await controller.stop();
+              final String? expectedCode = StorageService.instance.getQrCode();
+              if (value == expectedCode) {
+                await _finishAlarm();
+              } else {
+                if (mounted) {
                   setState(() {
                     _error = 'Falscher QR-Code. Versuche es erneut.';
                   });
                 }
-                if (mounted) Navigator.of(context).pop();
-              });
+              }
+
+              if (mounted) {
+                Navigator.of(context).pop();
+              }
             },
           ),
         ),
         actions: <Widget>[
           TextButton(
-            onPressed: () {
-              _qrController?.dispose();
-              Navigator.of(context).pop();
-            },
+            onPressed: () => Navigator.of(context).pop(),
             child: const Text('Abbrechen'),
           ),
         ],
       ),
     );
-    await _qrController?.resumeCamera();
+
+    controller.dispose();
   }
 
   Future<void> _scanNfc() async {

@@ -1,8 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import '../services/alarm_service.dart';
@@ -254,40 +256,54 @@ class _QrScannerScreen extends StatefulWidget {
 }
 
 class _QrScannerScreenState extends State<_QrScannerScreen> {
-  QRViewController? _controller;
-  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  final MobileScannerController _controller = MobileScannerController();
 
   @override
   void reassemble() {
     super.reassemble();
     if (defaultTargetPlatform == TargetPlatform.android) {
-      _controller?.pauseCamera();
+      unawaited(_controller.stop());
     }
-    _controller?.resumeCamera();
+    unawaited(_controller.start());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('QR-Code scannen')),
-      body: QRView(
-        key: qrKey,
-        onQRViewCreated: _onQRViewCreated,
+      body: MobileScanner(
+        controller: _controller,
+        onDetect: _onDetect,
       ),
     );
   }
 
-  void _onQRViewCreated(QRViewController controller) {
-    _controller = controller;
-    controller.scannedDataStream.listen((Barcode event) {
-      controller.stopCamera();
-      Navigator.of(context).pop(event.code);
-    });
+  Future<void> _onDetect(BarcodeCapture capture) async {
+    final List<Barcode> barcodes = capture.barcodes;
+    if (barcodes.isEmpty) {
+      return;
+    }
+
+    final Barcode barcode = barcodes.firstWhere(
+      (Barcode candidate) =>
+          candidate.rawValue != null && candidate.rawValue!.isNotEmpty,
+      orElse: () => barcodes.first,
+    );
+
+    final String? value = barcode.rawValue;
+    if (value == null || !mounted) {
+      return;
+    }
+
+    await _controller.stop();
+    if (mounted) {
+      Navigator.of(context).pop(value);
+    }
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _controller.dispose();
     super.dispose();
   }
 }
