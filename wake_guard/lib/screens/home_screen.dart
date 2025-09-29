@@ -117,11 +117,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _registerNfcTag() async {
-    final PermissionStatus status = await Permission.nfc.request();
-    if (!status.isGranted) {
+    final NfcAvailability availability = await FlutterNfcKit.nfcAvailability;
+    if (availability != NfcAvailability.available) {
       if (mounted) {
+        final String message = switch (availability) {
+          NfcAvailability.disabled =>
+            'NFC ist deaktiviert. Bitte aktiviere es in den Einstellungen.',
+          NfcAvailability.notSupported =>
+            'Dieses Gerät unterstützt kein NFC.',
+          _ => 'NFC ist aktuell nicht verfügbar.',
+        };
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('NFC-Berechtigung erforderlich.')),
+          SnackBar(content: Text(message)),
         );
       }
       return;

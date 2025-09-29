@@ -93,6 +93,20 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen> {
     });
 
     try {
+      final NfcAvailability availability = await FlutterNfcKit.nfcAvailability;
+      if (availability != NfcAvailability.available) {
+        setState(() {
+          _isProcessing = false;
+          _error = switch (availability) {
+            NfcAvailability.disabled =>
+                'NFC ist deaktiviert. Bitte aktiviere es in den Einstellungen.',
+            NfcAvailability.notSupported => 'Dieses Gerät unterstützt kein NFC.',
+            _ => 'NFC ist aktuell nicht verfügbar.',
+          };
+        });
+        return;
+      }
+
       final tag = await FlutterNfcKit.poll(timeout: const Duration(seconds: 15));
       await FlutterNfcKit.finish();
       final String? expected = StorageService.instance.getNfcIdentifier();
