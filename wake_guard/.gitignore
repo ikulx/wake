@@ -1,0 +1,20 @@
+# Flutter/Dart/Pub related
+.dart_tool/
+.packages
+build/
+.pub-cache/
+.flutter-plugins
+.flutter-plugins-dependencies
+.melos_tool/
+
+# IntelliJ related
+.idea/
+*.iml
+
+# VS Code related
+.vscode/
+.history/
+
+# Misc
+*.lock
+.DS_Store
